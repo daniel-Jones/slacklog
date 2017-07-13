@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
+'''
+AFTER TESTING BIND MONGODB TO LOCALHOST/ARGO HOST
+CLEAR CONFIG/SETTINGS.CFG BEFORE COMMITTING
+'''
+
 import urllib.request;
 import json;
+from pymongo import MongoClient;
 import configparser;
 
 '''
@@ -20,11 +26,27 @@ def getjson(url):
     f.close();
     return content;
 
+def dbconnect():
+    '''
+    connects to our database
+    returns nothing (globals, i feel dirty doing this)
+    args:
+        none
+    '''
+    global client;
+    global db;
+    global messagedb;
+    client = MongoClient(cfg.get("database", "host"), int(cfg.get("database", "port")));
+    db = client[cfg.get("database", "db")];
+    db.authenticate(cfg.get("database", "user"), cfg.get("database", "password")); 
+    messagedb = db.messages;
+
 def getstaticapidata():
     '''
     downloads our api data and stores them
     returns nothing
-    i hate this function
+    args:
+        none
     '''
     # channel json
     channelurl = "https://slack.com/api/channels.list?token={}&exclude_archived={}&exclude_members={}";
@@ -54,12 +76,11 @@ def getchannelid(channel):
             channelid;
         except NameError:
             channelid = "not found";
-
     return channelid;
 
 def getchannelmsghistory(token, channelid, count):
     '''
-    returns https request from the slack api containing channel message history.
+    returns json channel history
     args (all interpreted as strings):
         channelid = channel id (use getchannelid() to retrieve this from the human readable name)
     '''
@@ -67,11 +88,7 @@ def getchannelmsghistory(token, channelid, count):
     url = url.format(token, channelid, count);
     content = getjson(url);
     j = json.loads(content);
-    totalmessages = len(j['messages']);
-    for x in range(totalmessages):
-        # handle message here
-        print("<" + getusername(j['messages'][x]['user']) + "> " + str(j['messages'][x]['text'].encode('utf8')));
-    return str(totalmessages);
+    return j;
 
 def getuserid(username):
     '''
@@ -109,6 +126,48 @@ def getusername(userid):
             username = "not found";
     return username;
 
+def checkifentryexists(ts):
+    '''
+    database call to check if the message exists
+    returns true or false depending on conditions met
+    args:
+        ts = timestamp to check for
+    '''
+    ret = messagedb.find_one({"timestamp":ts}); 
+    #print(ret);
+    if (ret):
+        return True;
+    return False;
+
+def collectbants():
+    '''
+    collects and stores messages, handles message edits
+    returns nothing
+    args:
+        none
+    '''
+    j = json.loads(channeljson);
+    totalchannels = len(j['channels']);
+    for x in range(totalchannels):
+        print("doing channel", j['channels'][x]['name']);
+        data = getchannelmsghistory(token, getchannelid(j['channels'][x]['name']), cfg.get("messagelog", "count"));
+        totalmessages = len(data['messages']);
+        for i in range(totalmessages):
+    #    print("<" + getusername(data['messages'][x]['user']) + "> " + str(data['messages'][x]['text'].encode('utf8')));
+            try:
+                author = getusername(data['messages'][i]['user']);
+            except KeyError:
+                # user is a bot (vac'd son bot doesn't have a username?)
+                author = getusername(data['messages'][i]['username'])
+            if (checkifentryexists(data['messages'][i]['ts']) != True):
+                print("message not logged, logging");
+                query = {"author": author,
+                         "channel": j['channels'][x]['name'],
+                         "message": str(data['messages'][i]['text'].encode('utf8')),
+                         "timestamp": data['messages'][i]['ts']};
+                message_id = messagedb.insert_one(query).inserted_id;
+            else:
+                print("already exists.", data['messages'][i]['ts']);
 
 if __name__ == "__main__":
     cfg = configparser.ConfigParser();
@@ -116,9 +175,7 @@ if __name__ == "__main__":
     token = cfg.get("slack", "token");
     # static api data = channel info and user info
     getstaticapidata();
-    #print(cfg.get("slack", "token"));
-    #print(getchannelmsghistory(cfg.get('slack', 'token'), "C03UGEJ38", cfg.get("messagelog", "count")));
-    print("channel id from name: " + getchannelid("modmail"));
-    print("id from username: " + getuserid("daniel_j"));
-    print("username from id: " + getusername("U2S719P6Y"));
-    print("total messages retrieved: " + getchannelmsghistory(token, getchannelid("general"), cfg.get('messagelog', 'count')));
+    dbconnect();
+    collectbants();
+    print("finished");
+    
