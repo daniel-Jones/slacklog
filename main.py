@@ -59,7 +59,7 @@ def getstaticapidata():
     usersurl = usersurl.format(token);
     global usersjson;
     usersjson = getjson(usersurl);
-    #
+    
 def getchannelid(channel):
     ''' 
     returns channel id gathered from the name provided via the slack api 
@@ -67,7 +67,7 @@ def getchannelid(channel):
         channel = channel name (human readable, exclude the #)
     '''
     # do magic here
-    j = json.loads(channeljson);
+    j = json.loads(channeljson.decode("utf-8"));
     totalchannels = len(j['channels']);
     for x in range(totalchannels):
         if (j['channels'][x]['name'] == channel):
@@ -87,7 +87,7 @@ def getchannelmsghistory(token, channelid, count):
     url = "https://slack.com/api/channels.history?token={}&channel={}&count={}";
     url = url.format(token, channelid, count);
     content = getjson(url);
-    j = json.loads(content);
+    j = json.loads(content.decode("utf-8"));
     return j;
 
 def getuserid(username):
@@ -97,7 +97,7 @@ def getuserid(username):
         username = human readable username (daniel_j for example)
     '''
     # do magic here
-    j = json.loads(usersjson);
+    j = json.loads(usersjson.decode("utf-8"));
     totalusers = len(j['members']);
     for x in range(totalusers):
         if (j['members'][x]['name'] == username):
@@ -115,7 +115,7 @@ def getusername(userid):
         userid = users userid
     '''
     # do magic here
-    j = json.loads(usersjson);
+    j = json.loads(usersjson.decode("utf-8"));
     totalusers = len(j['members']);
     for x in range(totalusers):
         if (j['members'][x]['id'] == userid):
@@ -146,7 +146,7 @@ def collectbants():
     args:
         none
     '''
-    j = json.loads(channeljson);
+    j = json.loads(channeljson.decode('utf-8'));
     totalchannels = len(j['channels']);
     for x in range(totalchannels):
         print("doing channel", j['channels'][x]['name']);
@@ -177,5 +177,9 @@ if __name__ == "__main__":
     getstaticapidata();
     dbconnect();
     collectbants();
-    print("finished");
+    print("====================finished====================");
+
+    '''
+    Total API calls should be 10 (8 channels) + (channels list, members list)
+    '''
     
