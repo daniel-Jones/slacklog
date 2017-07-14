@@ -21,9 +21,13 @@ def getjson(url):
     args:
         url = url to request data from
     '''
-    f = urllib.request.urlopen(url);
-    content = f.read();
-    f.close();
+    try:
+        f = urllib.request.urlopen(url);
+        content = f.read();
+        f.close();
+    except urllib.error.URLError:
+        print("error getting json, api down probably, try later");
+        raise SystemExit;
     return content;
 
 def dbconnect():
@@ -163,7 +167,7 @@ def collectbants():
                 print("message not logged, logging");
                 query = {"author": author,
                          "channel": j['channels'][x]['name'],
-                         "message": str(data['messages'][i]['text'].encode('utf8')),
+                         "message": str(data['messages'][i]['text']),
                          "timestamp": data['messages'][i]['ts']};
                 message_id = messagedb.insert_one(query).inserted_id;
             else:
