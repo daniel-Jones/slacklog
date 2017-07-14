@@ -143,6 +143,14 @@ def checkifentryexists(ts):
         return True;
     return False;
 
+def getmsg(ts):
+    '''
+    retrieves a message from the database
+    returns message from the database corresponding to the timestamp provided
+    args: ts = timestamp to search for
+    '''
+    return messagedb.find_one({"timestamp": ts})['message'];
+
 def collectbants():
     '''
     collects and stores messages, handles message edits
@@ -172,6 +180,13 @@ def collectbants():
                 message_id = messagedb.insert_one(query).inserted_id;
             else:
                 print("already exists.", data['messages'][i]['ts']);
+                if ("edited" in data['messages'][i]):
+                    print("messaged has been edited at some point, checking", data['messages'][i]['ts']);
+                    if (getmsg(data['messages'][i]['ts']) != data['messages'][i]['text']):
+                        print("message does NOT match the database, updating");
+                        messagedb.update({"timestamp" : data['messages'][i]['ts']}, {"$set":{"message": data['messages'][i]['text']}})
+                    else:
+                        print("message matches, we're ok!");
 
 if __name__ == "__main__":
     cfg = configparser.ConfigParser();
