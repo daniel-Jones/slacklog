@@ -185,7 +185,7 @@ def collectbants():
                     print("messaged has been edited at some point, checking", data['messages'][i]['ts']);
                     if (getmsg(j['channels'][x]['name'], data['messages'][i]['ts']) != data['messages'][i]['text']):
                         print("message does NOT match the database, updating");
-                        messagedb.update({"timestamp" : data['messages'][i]['ts']}, {"$set":{"message": data['messages'][i]['text']}})
+                        messagedb.update({"channel": j['channels'][x]['name'], "timestamp" : data['messages'][i]['ts']}, {"$set":{"message": data['messages'][i]['text']}})
                     else:
                         print("message matches, nothing to do.");
 
