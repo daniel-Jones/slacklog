@@ -6,6 +6,7 @@ CLEAR CONFIG/SETTINGS.CFG BEFORE COMMITTING
 '''
 
 import urllib.request;
+import time;
 import json;
 from pymongo import MongoClient;
 import configparser;
@@ -130,26 +131,26 @@ def getusername(userid):
             username = "not found";
     return username;
 
-def checkifentryexists(ts):
+def checkifentryexists(channel, ts):
     '''
     database call to check if the message exists
     returns true or false depending on conditions met
     args:
         ts = timestamp to check for
     '''
-    ret = messagedb.find_one({"timestamp":ts}); 
+    ret = messagedb.find_one({"channel": channel, "timestamp":ts}); 
     #print(ret);
     if (ret):
         return True;
     return False;
 
-def getmsg(ts):
+def getmsg(channel, ts):
     '''
     retrieves a message from the database
     returns message from the database corresponding to the timestamp provided
     args: ts = timestamp to search for
     '''
-    return messagedb.find_one({"timestamp": ts})['message'];
+    return messagedb.find_one({"channel": channel, "timestamp": ts})['message'];
 
 def collectbants():
     '''
@@ -171,7 +172,7 @@ def collectbants():
             except KeyError:
                 # user is a bot (vac'd son bot doesn't have a username?)
                 author = getusername(data['messages'][i]['username'])
-            if (checkifentryexists(data['messages'][i]['ts']) != True):
+            if (checkifentryexists(j['channels'][x]['name'], data['messages'][i]['ts']) != True):
                 print("message not logged, logging");
                 query = {"author": author,
                          "channel": j['channels'][x]['name'],
@@ -179,16 +180,17 @@ def collectbants():
                          "timestamp": data['messages'][i]['ts']};
                 message_id = messagedb.insert_one(query).inserted_id;
             else:
-                print("already exists.", data['messages'][i]['ts']);
+                print("message exists:", data['messages'][i]['ts']);
                 if ("edited" in data['messages'][i]):
                     print("messaged has been edited at some point, checking", data['messages'][i]['ts']);
-                    if (getmsg(data['messages'][i]['ts']) != data['messages'][i]['text']):
+                    if (getmsg(j['channels'][x]['name'], data['messages'][i]['ts']) != data['messages'][i]['text']):
                         print("message does NOT match the database, updating");
                         messagedb.update({"timestamp" : data['messages'][i]['ts']}, {"$set":{"message": data['messages'][i]['text']}})
                     else:
-                        print("message matches, we're ok!");
+                        print("message matches, nothing to do.");
 
 if __name__ == "__main__":
+    start_time = time.time();
     cfg = configparser.ConfigParser();
     cfg.read("config/settings.cfg");
     token = cfg.get("slack", "token");
@@ -196,7 +198,7 @@ if __name__ == "__main__":
     getstaticapidata();
     dbconnect();
     collectbants();
-    print("====================finished====================");
+    print("===========finished in %s seconds===========" % (time.time() - start_time));
 
     '''
     Total API calls should be 10 (8 channels) + (channels list, members list)
