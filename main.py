@@ -128,7 +128,7 @@ def getusername(userid):
         try:
             username;
         except NameError:
-            username = "not found";
+            username = "a-bot";
     return username;
 
 def checkifentryexists(channel, ts):
@@ -158,6 +158,10 @@ def collectbants():
     returns nothing
     args:
         none
+
+    TODO 
+    convert mentions in messages, fixmessages.py has a working example, make it do mentions > 1 per line too, line example:
+    "Make sure that the Com night post for AU don't fire off tomorrow if we have no interest in hosting it. <@U1CD9P022> <@U2S719P6Y>"
     '''
     j = json.loads(channeljson.decode('utf-8'));
     totalchannels = len(j['channels']);
